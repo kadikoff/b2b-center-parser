@@ -1,4 +1,3 @@
-import csv
 import re
 from typing import Optional
 
@@ -6,9 +5,12 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
+from src.core.models import db_helper
+from src.core.models.model_tenders import Tenders
+
 BASE_URL = "https://www.b2b-center.ru"
 BASE_MARKET_URL = "https://www.b2b-center.ru/market/"
-TENDERS_LIST = []
+TENDERS_LIST: list[Tenders] = []
 
 
 def fetch_page_html(page_url: str) -> Optional[str]:
@@ -52,34 +54,33 @@ def extract_tenders_data(
         ).text
         tender_date_of_end = tender_td_blocks[3].text
 
-        TENDERS_LIST.append({
-            "№": tender_id,
-            "Организатор": tender_organizer,
-            "Ссылка": tender_full_url,
-            "Описание": tender_description,
-            "Дата окончания": tender_date_of_end
-        })
+        TENDERS_LIST.append(Tenders(
+            tender_id=tender_id,
+            organizer=tender_organizer,
+            url=tender_full_url,
+            description=tender_description,
+            end_date=tender_date_of_end
+        ))
 
         if len(TENDERS_LIST) == count_tenders:
             break
 
 
-def save_to_csv(tenders: list[dict], filename: str) -> None:
-    """Запись данных о тендерах в .csv формат"""
+async def save_to_db(tenders: list[Tenders]) -> None:
+    """Сохраняет данные о тендерах в базу данных"""
 
     if not tenders:
         print("Нет данных для сохранения.")
         return
 
-    with open(filename, mode="w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=tenders[0].keys())
-        writer.writeheader()
-        writer.writerows(tenders)
+    async for session in db_helper.session_dependency():
+        session.add_all(tenders)
+        await session.commit()
 
-    print(f"\nCSV сохранён: {filename}, количество тендеров: {len(TENDERS_LIST)}")
+    print(f"\nВ базу данных добавлено тендеров: {len(tenders)}")
 
 
-def main(count_tenders: int, output_filename: str) -> None:
+async def main(count_tenders: int) -> None:
     print(f"Запуск парсера, количество тендеров: {count_tenders}\n")
 
     offset = 0
@@ -102,4 +103,4 @@ def main(count_tenders: int, output_filename: str) -> None:
 
         offset += limit
 
-    save_to_csv(TENDERS_LIST, output_filename)
+    await save_to_db(TENDERS_LIST)
