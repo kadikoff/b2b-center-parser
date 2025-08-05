@@ -1,4 +1,4 @@
-from sqlalchemy import String, Text
+from sqlalchemy import String, Text, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .model_base import Base
@@ -9,7 +9,7 @@ class Tenders(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
-    tender_id: Mapped[str] = mapped_column(String(50), nullable=False)  # "№"
+    tender_id: Mapped[int] = mapped_column(Integer(), nullable=False)  # "№"
     organizer: Mapped[str] = mapped_column(String(255), nullable=True)  # "Организатор"
     url: Mapped[str] = mapped_column(Text, nullable=False)  # "Ссылка на тендер"
     description: Mapped[str] = mapped_column(Text, nullable=True)  # "Описание"
