@@ -34,11 +34,27 @@ class RunConfig(BaseModel):
     reload: bool = True
 
 
+class DbSettings(BaseSettings):
+    """Настройки подключение к SQLite базе данных
+
+    Предоставляет свойства для формирования DSN строк подключения.
+    """
+
+    db_path: str = str(BASE_PROJECT_DIR) + "/src/tenders.db"
+    db_echo: bool = True
+
+    @property
+    def url(self):
+        """Формирует DSN строку для подключения к базе данных"""
+        return f"sqlite+aiosqlite:///{self.db_path}"
+
+
 class Settings(BaseSettings):
     """Корневая конфигурация приложения"""
 
     api: FastApiConfig = FastApiConfig()
     run: RunConfig = RunConfig()
+    db: DbSettings = DbSettings()
 
 
 settings = Settings()
