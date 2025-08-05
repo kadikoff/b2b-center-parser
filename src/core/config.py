@@ -30,7 +30,7 @@ class RunConfig(BaseModel):
 
     host: str = "localhost"
     port: int = 8000
-    app: str = "run_app:app"
+    app: str = "src.run_app:app"
     reload: bool = True
 
 

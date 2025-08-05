@@ -4,8 +4,8 @@ from typing import AsyncGenerator, Any
 from fastapi import FastAPI
 import uvicorn
 
-from api.routes import router
-from core.config import settings
+from src.api.routes import router
+from src.core.config import settings
 from src.core.models.db_helper import db_helper
 from src.core.models import Base
 
