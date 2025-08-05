@@ -9,16 +9,16 @@ from bs4.element import Tag
 
 BASE_URL = "https://www.b2b-center.ru"
 BASE_MARKET_URL = "https://www.b2b-center.ru/market/"
-COUNTER = 0
+TENDERS_LIST = []
 
 
-def fetch_page_html(current_url: str) -> Optional[str]:
+def fetch_page_html(page_url: str) -> Optional[str]:
     """Выполнение запроса"""
 
     try:
-        response = requests.get(url=current_url)
+        response = requests.get(url=page_url)
     except Exception as exc:
-        print(f"Ошибка при запросе {current_url}: {exc}")
+        print(f"Ошибка при запросе {page_url}: {exc}")
         return None
 
     return response.text
@@ -38,14 +38,10 @@ def parse_tenders(html_data: str) -> list[Tag]:
 
 def extract_tenders_data(
         tenders_data: list[Tag], count_tenders: int
-) -> list[dict]:
+) -> None:
     """Извлечение данных тендера из html и добавление во временное хранилище"""
 
-    global COUNTER
-    tenders_list = []
-
     for tender in tenders_data:
-        COUNTER += 1
         tender_td_blocks = tender.select("td")
 
         tender_organizer = tender_td_blocks[1].text
@@ -57,7 +53,7 @@ def extract_tenders_data(
         ).text
         tender_date_of_end = tender_td_blocks[3].text
 
-        tenders_list.append({
+        TENDERS_LIST.append({
             "№": tender_id,
             "Организатор": tender_organizer,
             "Ссылка": tender_full_url,
@@ -65,10 +61,8 @@ def extract_tenders_data(
             "Дата окончания": tender_date_of_end
         })
 
-        if COUNTER == count_tenders:
+        if len(TENDERS_LIST) == count_tenders:
             break
-
-    return tenders_list
 
 
 def save_to_csv(tenders: list[dict], filename: str) -> None:
@@ -83,23 +77,33 @@ def save_to_csv(tenders: list[dict], filename: str) -> None:
         writer.writeheader()
         writer.writerows(tenders)
 
-    print(f"CSV сохранён: {filename}")
+    print(f"\nCSV сохранён: {filename}, количество тендеров: {len(TENDERS_LIST)}")
 
 
 def main(count_tenders: int, output_filename: str) -> None:
-    html: Optional[str] = fetch_page_html(BASE_MARKET_URL)
-    if not html:
-        print("Не удалось получить html!")
-        return
+    print(f"Запуск парсера, количество тендеров: {count_tenders}\n")
 
-    html_tenders: list[Tag] = parse_tenders(html)
-    if not html_tenders:
-        print("Нет данных о тендерах!")
+    offset = 0
+    limit = 20
 
-    tenders_data: list[dict] = extract_tenders_data(
-        html_tenders, count_tenders
-    )
-    save_to_csv(tenders_data, output_filename)
+    while len(TENDERS_LIST) < count_tenders:
+        current_page_url = f"{BASE_MARKET_URL}?from={offset}"
+        print(f"Парсинг страницы: {current_page_url}")
+
+        html: Optional[str] = fetch_page_html(current_page_url)
+        if not html:
+            print("Не удалось получить html!")
+            return
+
+        html_tenders: list[Tag] = parse_tenders(html)
+        if not html_tenders:
+            print("Нет данных о тендерах!")
+
+        extract_tenders_data(html_tenders, count_tenders)
+
+        offset += limit
+
+    save_to_csv(TENDERS_LIST, output_filename)
 
 
 if __name__ == "__main__":
